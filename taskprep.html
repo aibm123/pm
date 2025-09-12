@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body { font-family: sans-serif; }
+        .hidden { display: none !important; }
+        /* Custom scrollbar for better dark mode look */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        .kanban-card { cursor: grab; }
+        .kanban-card:active { cursor: grabbing; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-200">
+
+    <!-- =========== LOGIN PAGE =========== -->
+    <div id="login-page" class="flex h-screen w-full items-center justify-center bg-slate-900">
+        <div class="w-full max-w-sm rounded-lg bg-slate-800 p-8 shadow-2xl">
+            <div class="mb-6 text-center">
+                <div id="login-icon-container" class="mx-auto h-12 w-12 text-blue-500"></div>
+                <h1 class="mt-4 text-2xl font-bold text-white">Đăng nhập Dashboard</h1>
+                <p class="text-slate-400">Sử dụng tài khoản được cấp để tiếp tục</p>
+            </div>
+            <form id="login-form" class="space-y-6">
+                <div>
+                    <label class="text-sm font-medium text-slate-300">Tài khoản</label>
+                    <input id="username" type="text" placeholder="Vd: admin, user1" class="mt-2 w-full rounded-lg border-2 border-slate-600 bg-slate-700 px-4 py-2 text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                </div>
+                <div>
+                    <label class="text-sm font-medium text-slate-300">Mật khẩu</label>
+                    <input id="password" type="password" placeholder="Mật khẩu là 'admin' hoặc '123'" class="mt-2 w-full rounded-lg border-2 border-slate-600 bg-slate-700 px-4 py-2 text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                </div>
+                <p id="login-error" class="text-sm text-red-500 hidden"></p>
+                <button type="submit" class="w-full rounded-lg bg-blue-600 px-4 py-3 text-lg font-semibold text-white transition-colors hover:bg-blue-700">
+                    Đăng nhập
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- =========== MAIN DASHBOARD =========== -->
+    <main id="dashboard-page" class="hidden h-screen w-full font-sans text-slate-200">
+        <div class="flex h-full">
+            <!-- Sidebar Navigation -->
+            <nav class="flex flex-col justify-between border-r border-slate-800 bg-slate-900 p-4">
+                <div>
+                    <div class="mb-6 flex items-center gap-2 p-2">
+                        <svg class="h-8 w-8 text-blue-500" viewBox="0 0 24 24" fill="currentColor"><path fill-rule="evenodd" clip-rule="evenodd" d="M5 3H10V5H5V3ZM14 3H19V5H14V3ZM10 19H5V21H10V19ZM19 19H14V21H19V19ZM3 5V10H5V5H3ZM3 14V19H5V14H3ZM21 10V5H19V10H21ZM21 19V14H19V19H21ZM12 7C9.23858 7 7 9.23858 7 12C7 14.7614 9.23858 17 12 17C14.7614 17 17 14.7614 17 12C17 9.23858 14.7614 7 12 7Z"/></svg>
+                        <span class="text-xl font-bold text-white hidden md:inline">Dashboard</span>
+                    </div>
+                    <ul id="nav-list" class="flex flex-col gap-2">
+                        <!-- Nav items will be injected here by JS -->
+                    </ul>
+                </div>
+                <div>
+                    <div class="border-t border-slate-700 pt-4 text-center">
+                        <p id="user-name" class="text-sm font-semibold text-white hidden md:block"></p>
+                        <p id="user-role" class="text-xs text-slate-400 hidden md:block"></p>
+                        <button id="logout-button" class="mt-2 flex w-full items-center gap-3 rounded-lg p-2 text-left text-sm font-medium transition-colors text-slate-400 hover:bg-slate-800 hover:text-white md:px-4 md:py-3">
+                            <span id="logout-icon-container"></span>
+                            <span class="hidden md:inline">Đăng xuất</span>
+                        </button>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <div id="main-content" class="flex-1 p-4 md:p-6 bg-slate-800/20">
+                <!-- Content for pages will be injected here -->
+            </div>
+        </div>
+    </main>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        //=========== MOCK DATABASE ===========//
+        const usersDB = {
+            admin: { password: 'admin', role: 'admin', name: 'Quản trị viên' },
+            user1: { password: '123', role: 'user', name: 'Nguyễn Văn A' },
+            user2: { password: '123', role: 'user', name: 'Trần Thị B' },
+        };
+
+        const initialTasks = [
+            { id: 1, content: 'Phân tích yêu cầu khách hàng cho dự án X', status: 'To Do', userId: 'user1' },
+            { id: 2, content: 'Thiết kế wireframe cho ứng dụng di động', status: 'In Progress', userId: 'user1' },
+            { id: 3, content: 'Báo cáo tiến độ tuần cho ban giám đốc', status: 'Done', userId: 'user2' },
+            { id: 4, content: 'Chuẩn bị tài liệu họp với đối tác', status: 'To Do', userId: 'user2' },
+            { id: 5, content: 'Sửa lỗi giao diện trên trang thanh toán', status: 'In Progress', userId: 'user1' },
+            { id: 6, content: 'Lên kế hoạch chiến dịch marketing Q4', status: 'To Do', userId: 'user2' },
+        ];
+
+        const driveDB = {
+            'Kinh doanh': [{ id: 1, name: 'Báo giá Dự án ABC.xlsx', type: 'doc', size: '1.2MB', modified: '10/09/2025' }, { id: 2, name: 'Kế hoạch khách hàng tiềm năng.docx', type: 'doc', size: '850KB', modified: '08/09/2025' }, { id: 3, name: 'Hợp đồng mẫu.pdf', type: 'doc', size: '950KB', modified: '05/09/2025' }, ],
+            'Marketing': [{ id: 4, name: 'Chiến dịch quảng cáo T9.pdf', type: 'doc', size: '2.1MB', modified: '02/09/2025' }, { id: 5, name: 'Tài sản thương hiệu', type: 'folder', modified: '30/08/2025' }, { id: 6, name: 'Ảnh bìa social.png', type: 'image', size: '3.4MB', modified: '28/08/2025' }, ],
+            'Nhân sự': [{ id: 7, name: 'Chính sách nghỉ phép 2025.pdf', type: 'doc', size: '500KB', modified: '25/08/2025' }, { id: 8, name: 'Danh sách nhân viên.xlsx', type: 'doc', size: '250KB', modified: '22/08/2025' }, ],
+            'Kỹ thuật': [{ id: 9, name: 'Tài liệu API.md', type: 'doc', size: '1.5MB', modified: '20/08/2025' }, { id: 10, name: 'Sơ đồ hệ thống.drawio', type: 'image', size: '780KB', modified: '18/08/2025' }, ],
+        };
+        
+        //=========== APP STATE ===========//
+        let currentUser = null;
+        let activePage = 'tasks';
+        let tasks = [...initialTasks];
+        let draggedTaskId = null;
+
+        //=========== DOM ELEMENTS ===========//
+        const loginPage = document.getElementById('login-page');
+        const dashboardPage = document.getElementById('dashboard-page');
+        const loginForm = document.getElementById('login-form');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const loginError = document.getElementById('login-error');
+        const mainContent = document.getElementById('main-content');
+        const navList = document.getElementById('nav-list');
+        const userNameDisplay = document.getElementById('user-name');
+        const userRoleDisplay = document.getElementById('user-role');
+        const logoutButton = document.getElementById('logout-button');
+
+        //=========== RENDER FUNCTIONS ===========//
+
+        const renderPage = () => {
+            mainContent.innerHTML = '';
+            switch(activePage) {
+                case 'tasks':
+                    mainContent.innerHTML = getKanbanHTML();
+                    renderKanbanTasks();
+                    addKanbanEventListeners();
+                    break;
+                case 'drive':
+                    mainContent.innerHTML = getDriveHTML();
+                    renderDriveDepartments();
+                    break;
+                case 'chatbot':
+                    mainContent.innerHTML = getChatbotHTML();
+                    addChatbotEventListeners();
+                    break;
+            }
+            updateNav();
+            lucide.createIcons();
+        }
+
+        const updateNav = () => {
+            const navItems = [
+                { id: 'tasks', label: 'Công việc', icon: 'columns' },
+                { id: 'drive', label: 'Drive', icon: 'hard-drive' },
+                { id: 'chatbot', label: 'Chatbot', icon: 'message-square' },
+            ];
+            navList.innerHTML = '';
+            navItems.forEach(item => {
+                const isActive = activePage === item.id;
+                const buttonClasses = `flex w-full items-center gap-3 rounded-lg p-2 text-left text-sm font-medium transition-colors md:px-4 md:py-3 ${isActive ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`;
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <button data-page="${item.id}" class="${buttonClasses}">
+                        <i data-lucide="${item.icon}" class="inline-block h-5 w-5"></i>
+                        <span class="hidden md:inline">${item.label}</span>
+                    </button>
+                `;
+                navList.appendChild(li);
+            });
+            document.querySelectorAll('#nav-list button').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    activePage = e.currentTarget.dataset.page;
+                    renderPage();
+                });
+            });
+        };
+        
+        // --- Kanban ---
+        const getKanbanHTML = () => `
+            <div class="flex h-full flex-col bg-slate-800/50 rounded-lg p-4 md:p-6">
+                <div class="mb-4">
+                    <h2 class="text-xl font-semibold text-white">Bảng công việc</h2>
+                    <p class="text-sm text-slate-400">Kéo thả để thay đổi trạng thái công việc</p>
+                </div>
+                <div class="grid flex-1 grid-cols-1 md:grid-cols-3 gap-6 overflow-hidden">
+                    <div id="kanban-col-todo" data-status="To Do" class="kanban-column flex flex-col rounded-lg bg-slate-900/70">
+                        <h3 class="p-4 text-lg font-semibold text-white border-b-2 border-slate-700">To Do</h3>
+                        <div class="task-list space-y-3 overflow-y-auto p-4"></div>
+                    </div>
+                    <div id="kanban-col-inprogress" data-status="In Progress" class="kanban-column flex flex-col rounded-lg bg-slate-900/70">
+                        <h3 class="p-4 text-lg font-semibold text-white border-b-2 border-slate-700">In Progress</h3>
+                        <div class="task-list space-y-3 overflow-y-auto p-4"></div>
+                    </div>
+                    <div id="kanban-col-done" data-status="Done" class="kanban-column flex flex-col rounded-lg bg-slate-900/70">
+                        <h3 class="p-4 text-lg font-semibold text-white border-b-2 border-slate-700">Done</h3>
+                        <div class="task-list space-y-3 overflow-y-auto p-4"></div>
+                    </div>
+                </div>
+            </div>`;
+
+        const renderKanbanTasks = () => {
+            document.querySelectorAll('.task-list').forEach(list => list.innerHTML = '');
+            const visibleTasks = currentUser.role === 'admin' ? tasks : tasks.filter(t => t.userId === currentUser.username);
+            
+            visibleTasks.forEach(task => {
+                const taskEl = document.createElement('div');
+                taskEl.id = `task-${task.id}`;
+                taskEl.className = "kanban-card rounded-lg bg-slate-700 p-4 shadow-md transition-all hover:bg-slate-600/50";
+                taskEl.draggable = true;
+                taskEl.innerHTML = `
+                    <p class="text-slate-200">${task.content}</p>
+                    <div class="mt-2 text-xs text-slate-400">
+                        <span>Người thực hiện: </span>
+                        <span class="font-semibold text-slate-300">${usersDB[task.userId]?.name || task.userId}</span>
+                    </div>`;
+                
+                if (task.status === 'To Do') document.querySelector('#kanban-col-todo .task-list').appendChild(taskEl);
+                if (task.status === 'In Progress') document.querySelector('#kanban-col-inprogress .task-list').appendChild(taskEl);
+                if (task.status === 'Done') document.querySelector('#kanban-col-done .task-list').appendChild(taskEl);
+            });
+        };
+
+        // --- Drive ---
+        const getDriveHTML = () => `
+            <div class="flex h-full flex-col bg-slate-800/50 rounded-lg">
+                <div class="p-4 border-b border-slate-700 flex justify-between items-center">
+                    <div id="drive-header" class="flex items-center gap-4"></div>
+                    <div class="relative">
+                        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 h-5 w-5"></i>
+                        <input type="text" placeholder="Tìm trong Drive" class="w-48 md:w-64 rounded-lg border-2 border-slate-600 bg-slate-700 py-2 pl-10 pr-4 text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    </div>
+                </div>
+                <div id="drive-content" class="p-6"></div>
+            </div>`;
+        
+        const renderDriveDepartments = () => {
+            document.getElementById('drive-header').innerHTML = `
+                <div>
+                    <h2 class="text-xl font-semibold text-white">Tài liệu công ty</h2>
+                    <p class="text-sm text-slate-400">Chọn một phòng ban để xem tài liệu</p>
+                </div>`;
+
+            const contentEl = document.getElementById('drive-content');
+            contentEl.className = 'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 p-6';
+            contentEl.innerHTML = Object.keys(driveDB).map(dept => `
+                <div data-dept="${dept}" class="drive-dept-folder flex flex-col items-center justify-center gap-2 p-4 rounded-lg bg-slate-700 hover:bg-blue-600 cursor-pointer transition-colors">
+                    <i data-lucide="folder" class="h-12 w-12 text-blue-400"></i>
+                    <span class="font-medium text-white text-center">${dept}</span>
+                </div>
+            `).join('');
+            
+            document.querySelectorAll('.drive-dept-folder').forEach(folder => {
+                folder.addEventListener('click', (e) => {
+                    renderDriveFiles(e.currentTarget.dataset.dept);
+                });
+            });
+            lucide.createIcons();
+        };
+        
+        const renderDriveFiles = (deptName) => {
+            document.getElementById('drive-header').innerHTML = `
+                <button id="drive-back-btn" class="p-2 rounded-md hover:bg-slate-700">
+                    <i data-lucide="arrow-left" class="h-5 w-5"></i>
+                </button>
+                <div>
+                    <h2 class="text-xl font-semibold text-white">${deptName}</h2>
+                    <p class="text-sm text-slate-400">Tài liệu của phòng ${deptName}</p>
+                </div>`;
+            
+            document.getElementById('drive-back-btn').addEventListener('click', renderDriveDepartments);
+
+            const contentEl = document.getElementById('drive-content');
+            contentEl.className = 'flex-1 overflow-x-auto p-0';
+            const files = driveDB[deptName];
+            const getFileIcon = (type) => {
+                const iconMap = {
+                    folder: `<i data-lucide="folder" class="h-5 w-5 text-blue-400"></i>`,
+                    doc: `<i data-lucide="file-text" class="h-5 w-5 text-green-400"></i>`,
+                    image: `<i data-lucide="file-image" class="h-5 w-5 text-purple-400"></i>`,
+                };
+                return iconMap[type] || `<i data-lucide="file-text" class="h-5 w-5 text-slate-400"></i>`;
+            };
+
+            contentEl.innerHTML = `
+                <table class="w-full text-left text-sm text-slate-300">
+                    <thead class="bg-slate-700/50 text-xs uppercase text-slate-400">
+                        <tr>
+                            <th scope="col" class="px-6 py-3">Tên</th>
+                            <th scope="col" class="px-6 py-3 hidden md:table-cell">Ngày sửa đổi</th>
+                            <th scope="col" class="px-6 py-3 hidden md:table-cell">Kích thước tệp</th>
+                            <th scope="col" class="px-6 py-3 text-right"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${files.map(file => `
+                            <tr class="border-b border-slate-700 transition-colors hover:bg-slate-700/50">
+                                <th scope="row" class="flex items-center gap-3 whitespace-nowrap px-6 py-4 font-medium text-white">${getFileIcon(file.type)}<span>${file.name}</span></th>
+                                <td class="px-6 py-4 hidden md:table-cell">${file.modified}</td>
+                                <td class="px-6 py-4 hidden md:table-cell">${file.size || '—'}</td>
+                                <td class="px-6 py-4 text-right"><button class="text-slate-400 hover:text-white"><i data-lucide="more-vertical" class="h-5 w-5"></i></button></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>`;
+            lucide.createIcons();
+        };
+        
+        // --- Chatbot ---
+        const getChatbotHTML = () => `
+            <div class="flex h-full flex-col bg-slate-800/50 rounded-lg">
+                <div class="p-4 border-b border-slate-700">
+                    <h2 class="text-xl font-semibold text-white">Chatbot AI</h2>
+                    <p class="text-sm text-slate-400">Trợ lý ảo của bạn</p>
+                </div>
+                <div id="chatbot-messages" class="flex-1 space-y-4 overflow-y-auto p-4">
+                    <div class="flex items-end gap-2 justify-start">
+                        <div class="h-8 w-8 rounded-full bg-blue-500 flex-shrink-0"></div>
+                        <div class="max-w-xs rounded-lg px-4 py-2 md:max-w-md rounded-bl-none bg-slate-700 text-slate-200">
+                            <p>Xin chào! Tôi có thể giúp gì cho bạn?</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 border-t border-slate-700 p-4">
+                    <input id="chatbot-input" type="text" placeholder="Nhập tin nhắn của bạn..." class="flex-1 rounded-lg border-2 border-slate-600 bg-slate-700 px-4 py-2 text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                    <button id="chatbot-send" class="rounded-lg bg-blue-600 p-2 text-white transition-colors hover:bg-blue-700">
+                        <i data-lucide="send" class="h-5 w-5"></i>
+                    </button>
+                </div>
+            </div>`;
+
+        //=========== EVENT HANDLERS ===========//
+        const handleLogin = (e) => {
+            e.preventDefault();
+            const user = usersDB[usernameInput.value];
+            if (user && user.password === passwordInput.value) {
+                currentUser = { username: usernameInput.value, ...user };
+                loginPage.classList.add('hidden');
+                dashboardPage.classList.remove('hidden');
+                userNameDisplay.textContent = currentUser.name;
+                userRoleDisplay.textContent = currentUser.role === 'admin' ? 'Quản trị viên' : 'Nhân viên';
+                renderPage();
+            } else {
+                loginError.textContent = 'Tên đăng nhập hoặc mật khẩu không đúng.';
+                loginError.classList.remove('hidden');
+            }
+        };
+        
+        const handleLogout = () => {
+            currentUser = null;
+            loginPage.classList.remove('hidden');
+            dashboardPage.classList.add('hidden');
+            usernameInput.value = '';
+            passwordInput.value = '';
+            loginError.classList.add('hidden');
+        };
+        
+        const addKanbanEventListeners = () => {
+            const columns = document.querySelectorAll('.kanban-column');
+            const tasksEls = document.querySelectorAll('.kanban-card');
+            
+            tasksEls.forEach(task => {
+                task.addEventListener('dragstart', (e) => {
+                    draggedTaskId = parseInt(e.target.id.split('-')[1]);
+                    setTimeout(() => e.target.classList.add('hidden'), 0);
+                });
+                task.addEventListener('dragend', (e) => {
+                    e.target.classList.remove('hidden');
+                });
+            });
+
+            columns.forEach(column => {
+                column.addEventListener('dragover', (e) => e.preventDefault());
+                column.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    const newStatus = e.currentTarget.dataset.status;
+                    const taskToUpdate = tasks.find(t => t.id === draggedTaskId);
+                    if (taskToUpdate && taskToUpdate.status !== newStatus) {
+                        taskToUpdate.status = newStatus;
+                        renderKanbanTasks();
+                        addKanbanEventListeners();
+                    }
+                    draggedTaskId = null;
+                });
+            });
+        };
+        
+        const addChatbotEventListeners = () => {
+            const sendBtn = document.getElementById('chatbot-send');
+            const input = document.getElementById('chatbot-input');
+            const messagesContainer = document.getElementById('chatbot-messages');
+
+            const sendMessage = () => {
+                const text = input.value.trim();
+                if (text === '') return;
+                
+                messagesContainer.innerHTML += `
+                    <div class="flex items-end gap-2 justify-end">
+                        <div class="max-w-xs rounded-lg px-4 py-2 md:max-w-md rounded-br-none bg-blue-600 text-white"><p>${text}</p></div>
+                    </div>`;
+                input.value = '';
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+                setTimeout(() => {
+                    messagesContainer.innerHTML += `
+                        <div class="flex items-end gap-2 justify-start">
+                            <div class="h-8 w-8 rounded-full bg-blue-500 flex-shrink-0"></div>
+                            <div class="max-w-xs rounded-lg px-4 py-2 md:max-w-md rounded-bl-none bg-slate-700 text-slate-200"><p>Cảm ơn bạn đã chia sẻ. Tôi đang xử lý thông tin.</p></div>
+                        </div>`;
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                }, 1000);
+            };
+
+            sendBtn.addEventListener('click', sendMessage);
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendMessage();
+            });
+        };
+
+        //=========== INITIALIZATION ===========//
+        const init = () => {
+            // Setup icons that are not part of a dynamic render loop
+            document.getElementById('login-icon-container').innerHTML = `<i data-lucide="log-in" class="h-12 w-12"></i>`;
+            document.getElementById('logout-icon-container').innerHTML = `<i data-lucide="log-out" class="h-5 w-5"></i>`;
+            
+            lucide.createIcons();
+            
+            loginForm.addEventListener('submit', handleLogin);
+            logoutButton.addEventListener('click', handleLogout);
+
+            // Check if user is logged in (for dev purposes, start at login)
+            if (currentUser) {
+                loginPage.classList.add('hidden');
+                dashboardPage.classList.remove('hidden');
+                renderPage();
+            } else {
+                loginPage.classList.remove('hidden');
+                dashboardPage.classList.add('hidden');
+            }
+        };
+
+        init();
+    });
+    </script>
+</body>
+</html>
+
